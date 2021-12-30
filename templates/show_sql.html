@@ -1,0 +1,6 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>{{ report['name']}}: {{ query }}</h1>
+    <pre>{{ query_sql }}</pre>
+{% endblock %}  

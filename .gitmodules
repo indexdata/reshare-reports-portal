@@ -1,0 +1,3 @@
+[submodule "reshare-analytics"]
+	path = reshare-analytics
+	url = https://github.com/openlibraryenvironment/reshare-analytics.git

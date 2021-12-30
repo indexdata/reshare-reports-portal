@@ -1,0 +1,7 @@
+LDP_HOST = 'metadb-cny-prod.cpvupbknx9nm.us-east-1.rds.amazonaws.com'
+LDP_PORT = '5432'
+LDP_USER = ''
+LDP_PASSWORD = ''
+LDP_DATABASE = 'cny_prod'
+SESSION_KEY = 'random_string'
+REPORTS_DIR = './reshare-analytics/sql/report_queries/'
