@@ -9,9 +9,9 @@ source ENV/bin/activate
 pip install -r requirements.txt
 ```
 
-Set your local settings
+Set your local settings either by using environment variables or editing the settings file. Environment variables take precedence.
 ```
-cp settings.template.py settings.py
+vi settings.py
 ```
 ## Run (for development)
 ```

@@ -16,13 +16,12 @@ app = Flask(__name__)
 Markdown(app, extensions=['extra'])
 
 #configuration from settings.py
-app.secret_key = settings.SESSION_KEY
-app.config['LDP_HOST'] = settings.LDP_HOST
-app.config['LDP_PORT'] = settings.LDP_PORT
-app.config['LDP_USER'] = settings.LDP_USER
-app.config['LDP_PASSWORD'] = settings.LDP_PASSWORD
-app.config['LDP_DATABASE'] = settings.LDP_DATABASE
-app.config['REPORTS_DIR'] = settings.REPORTS_DIR
+app.secret_key = os.getenv('SESSION_KEY') or settings.SESSION_KEY
+app.config['LDP_HOST'] = os.getenv('LDP_HOST') or settings.LDP_HOST
+app.config['LDP_PORT'] = os.getenv('LDP_PORT') or settings.LDP_PORT
+app.config['LDP_DATABASE'] = os.getenv('LDP_DATABASE') or settings.LDP_DATABASE
+app.config['REPORTS_DIR'] = os.getenv('REPORTS_DIR') or settings.REPORTS_DIR
+app.config['ORG_NAME'] = os.getenv('ORG_NAME') or settings.ORG_NAME
 
 # logging
 logger = logging.getLogger()
@@ -68,6 +67,7 @@ def set_reports():
 @auth_required
 def index():
     reports_list = []
+    print("found reports: ")
     for key in all_reports:
         print(key)
         reports_list.append({"name": all_reports[key]['name'], "report": all_reports[key]['report']})
@@ -80,14 +80,25 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        response_code = 204 # can put a function here to check against okapi or ldp
-        if response_code == 204:
+        try:
+            connection = _postgres_connect(
+                app.config['LDP_HOST'],
+                app.config['LDP_PORT'],
+                username,
+                password,
+                app.config['LDP_DATABASE']
+            )
+        except psycopg2.OperationalError:
+            abort(403)
+        if connection.status == 1:
             authorized = True # can put a function here to authorize
             if authorized:
                 session['username'] = username
+                session['password'] = password
+                _postgres_close_connection(connection)
                 return redirect(url_for('index'))
             else:
-                return abort(403)
+                return abort(403)        
         else:
             flash('User not found, check username and password')
             return redirect(url_for('login'))
@@ -125,13 +136,16 @@ def execute_query(report, query):
         query_sql = open(current_report['queries'][query]['sql'], 'r').read()
     except:
         abort(404)
-    connection = _postgres_connect(
+    try: 
+        connection = _postgres_connect(
             app.config['LDP_HOST'],
             app.config['LDP_PORT'],
-            app.config['LDP_USER'],
-            app.config['LDP_PASSWORD'],
+            session['username'],
+            session['password'],
             app.config['LDP_DATABASE']
         )
+    except psycopg2.OperationalError:
+        abort(500)
     result = _postgres_query(connection, query_sql)
     _postgres_close_connection(connection)
     csv = request.args.get("csv", default=False, type=bool)
@@ -231,9 +245,6 @@ def _get_report(report, reports_dict):
     except KeyError:
         abort(404)
     return current_report
-
-
-
 
 # run this app
 if __name__ == "__main__":
