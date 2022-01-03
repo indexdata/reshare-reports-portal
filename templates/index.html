@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block content %}
-    <h1>CNY Reports</h1>
+    <h1>{{ config['ORG_NAME'] }} Reports</h1>
     <ul>
         {% for report in reports %}
         <li><a href="{{ url_for('report', report=report['report']) }}">{{ report['name'] }}</a></li>
