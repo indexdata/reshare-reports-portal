@@ -33,6 +33,12 @@
       </div>
     </div>
   </div>
+  <script>
+    var divs = document.querySelectorAll('table');
+    for (var i = 0; i < divs.length; i++) {
+      divs[i].classList.add('table');
+    }
+  </script>
         {% endif %}
 
 {% endblock %}  
