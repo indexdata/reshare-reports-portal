@@ -5,8 +5,8 @@
         <ul>
         {% for q in queries %}
         <li> {{ q }} : 
-            <a href="{{ url_for('execute_query', report=report['report'], query=q) }}">Show Results</a> |
-            <a href="{{ url_for('execute_query', report=report['report'], query=q, csv=True) }}">Download CSV</a> |
+            <a href="{{ url_for('parameterize_query', report=report['report'], query=q) }}">Show Results</a> |
+            <a href="{{ url_for('parameterize_query', report=report['report'], query=q, csv=True) }}">Download CSV</a> |
             <a href="{{ url_for('describe_query', report=report['report'], query=q) }}">Show SQL</a>
         </li> 
         {% endfor %}  
