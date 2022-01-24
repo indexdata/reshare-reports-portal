@@ -7,6 +7,7 @@ import logging
 import os
 import psycopg2
 from psycopg2 import Error
+import re
 import requests
 import settings
 import sys
@@ -22,6 +23,7 @@ app.config['LDP_PORT'] = os.getenv('LDP_PORT') or settings.LDP_PORT
 app.config['LDP_DATABASE'] = os.getenv('LDP_DATABASE') or settings.LDP_DATABASE
 app.config['REPORTS_DIR'] = os.getenv('REPORTS_DIR') or settings.REPORTS_DIR
 app.config['ORG_NAME'] = os.getenv('ORG_NAME') or settings.ORG_NAME
+print(app.config['LDP_HOST'])
 
 # logging
 logger = logging.getLogger()
@@ -114,7 +116,6 @@ def logout():
 @auth_required
 def report(report):
     current_report = _get_report(report, all_reports)
-    
     try:
         readme = open(current_report['readme'], 'r').read()
     except KeyError:
@@ -126,14 +127,37 @@ def report(report):
 
     return render_template('report.html', readme=readme, report=current_report, queries=queries)
 
-@app.route('/report/<report>/execute/<query>')
+@app.route('/report/<report>/params/<query>')
+@auth_required
+def parameterize_query(report, query):
+    csv = request.args.get("csv", default=False, type=bool)
+    if not bool(csv):
+        csv = None
+    current_report = _get_report(report, all_reports)
+    if not current_report['queries'][query]['has_params']:
+        return redirect(url_for('execute_query', report=report, query=query, csv=csv))
+    else:
+        try:
+            query_sql = open(current_report['queries'][query]['sql'], 'r').read()
+        except:
+            abort(404)
+        #return "parameterize {}".format(query)
+        return render_template('parameterize.html', report=report, query=query, query_sql=query_sql, csv=csv)
+
+@app.route('/report/<report>/execute/<query>', methods=['GET', 'POST'])
 @auth_required
 def execute_query(report, query):
+    start_date = None
+    end_date = None
     current_report = _get_report(report, all_reports)
-    print(current_report['queries'][query]['sql'])
     try:
-       
         query_sql = open(current_report['queries'][query]['sql'], 'r').read()
+        if request.method == 'POST':
+            start_date = request.form['start-date']
+            end_date = request.form['end-date']
+            query_sql = _sub_dates(query_sql, start_date, end_date)
+            #report = request.form['report']
+            #query = request.form['query']
     except:
         abort(404)
     try: 
@@ -149,13 +173,13 @@ def execute_query(report, query):
     result = _postgres_query(connection, query_sql)
     _postgres_close_connection(connection)
     csv = request.args.get("csv", default=False, type=bool)
-    if csv:
+    if bool(csv):
         return Response(
             _result_to_csv(result),
             mimetype="text/csv",
             headers={"Content-disposition": "attachment; filename={}.csv".format(report)})
     else:
-        return render_template('results.html', result=result, report=report)
+        return render_template('results.html', result=result, report=report, start_date=start_date, end_date=end_date)
 
 @app.route('/report/<report>/show/<query>')
 @auth_required
@@ -163,17 +187,30 @@ def describe_query(report, query):
     current_report = _get_report(report, all_reports)
     print(current_report['queries'][query]['sql'])
     try:
-       
         query_sql = open(current_report['queries'][query]['sql'], 'r').read()
     except:
         abort(404)
     return render_template('show_sql.html', report=current_report, query=query, query_sql=query_sql)
 
 
-@app.route('/test')
+@app.route('/test', methods=['POST'])
 @auth_required
 def test():
-    return("test")
+    start_date = request.form['start-date']
+    end_date = request.form['end-date']
+    report = request.form['report']
+    query = request.form['query']
+
+    current_report = _get_report(report, all_reports)
+    print(current_report['queries'][query]['sql'])
+    try:
+        query_sql = open(current_report['queries'][query]['sql'], 'r').read()
+        query_sql = _sub_dates(query_sql, start_date, end_date)
+    except:
+        abort(404)
+    return render_template('show_sql.html', report=current_report, query=query, query_sql=query_sql)
+
+    return(str(query))
 
 
 # local functions
@@ -233,11 +270,34 @@ def _build_reports_index(rootdir):
                     elif rname.endswith(".sql"):
                         reports[dir]["queries"][rname] = {
                             "sql": os.path.join(rpath, rname),
-                            "name": rname
+                            "name": rname,
+                            "has_params": _check_report_params(os.path.join(rpath, rname))
                         }
+    print(json.dumps(reports, sort_keys=True, indent=4))
     if app.debug:
         print(json.dumps(reports, sort_keys=True, indent=4))
     return reports
+
+def _check_report_params(sql, from_file=True):
+    has_params = False
+    if from_file:
+        query_sql = open(sql, 'r').read()
+    else:
+        #query sql is string
+        query_sql = sql
+    if 'WITH parameters AS' in query_sql:
+        has_params = True
+    return has_params
+
+def _sub_dates(query_sql, start_date, end_date):
+        # sub start date
+        query_sql  = re.sub(r"\'\d{4}-\d{2}-\d{2}\'::date AS start_date",
+            "\'{}\'::date AS start_date".format(start_date), query_sql)
+        # sub end date
+        query_sql  = re.sub(r"\'\d{4}-\d{2}-\d{2}\'::date AS end_date",
+            "\'{}\'::date AS end_date".format(end_date), query_sql)
+        return(query_sql)
+
 
 def _get_report(report, reports_dict):
     try:

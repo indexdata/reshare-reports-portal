@@ -2,6 +2,13 @@
 
 {% block content %}
     <h1>{{ report }}</h1>
+    {% if start_date and end_date %}
+    <div id="params">
+        <h3>Parameters</h3>
+        <p>Start Date: {{ start_date }}</p>
+        <p>End Date: {{ end_date }}</p>
+    </div>
+    {% endif %}
     <table class="table">
         <thead>
           <tr>
