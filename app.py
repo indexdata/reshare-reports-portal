@@ -192,27 +192,6 @@ def describe_query(report, query):
         abort(404)
     return render_template('show_sql.html', report=current_report, query=query, query_sql=query_sql)
 
-
-@app.route('/test', methods=['POST'])
-@auth_required
-def test():
-    start_date = request.form['start-date']
-    end_date = request.form['end-date']
-    report = request.form['report']
-    query = request.form['query']
-
-    current_report = _get_report(report, all_reports)
-    print(current_report['queries'][query]['sql'])
-    try:
-        query_sql = open(current_report['queries'][query]['sql'], 'r').read()
-        query_sql = _sub_dates(query_sql, start_date, end_date)
-    except:
-        abort(404)
-    return render_template('show_sql.html', report=current_report, query=query, query_sql=query_sql)
-
-    return(str(query))
-
-
 # local functions
 def _postgres_connect(host, port, username, password, database):
     try:
