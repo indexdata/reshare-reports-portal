@@ -240,21 +240,23 @@ def _build_reports_index(rootdir):
     reports = {}
     for path, subdirs, files in os.walk(rootdir):
         for dir in subdirs:
-            reports[dir] = {"report":dir,"name": dir.replace('_', ' ').capitalize()}
-            for rpath, rsubdirs, rfiles in os.walk(os.path.join(path, dir)):
-                reports[dir]["queries"] = {}
-                for rname in rfiles:
-                    if rname.endswith(".md"):
-                        reports[dir]["readme"] = os.path.join(rpath, rname)
-                    elif rname.endswith(".sql"):
-                        reports[dir]["queries"][rname] = {
-                            "sql": os.path.join(rpath, rname),
-                            "name": rname,
-                            "has_params": _check_report_params(os.path.join(rpath, rname))
-                        }
+            # skip requesting_ration DEVOPS-963
+            if dir != "requesting_ratio":
+                reports[dir] = {"report":dir,"name": dir.replace('_', ' ').capitalize()}
+                for rpath, rsubdirs, rfiles in os.walk(os.path.join(path, dir)):
+                    reports[dir]["queries"] = {}
+                    for rname in rfiles:
+                        if rname.endswith(".md"):
+                            reports[dir]["readme"] = os.path.join(rpath, rname)
+                        elif rname.endswith(".sql"):
+                            reports[dir]["queries"][rname] = {
+                                "sql": os.path.join(rpath, rname),
+                                "name": rname,
+                                "has_params": _check_report_params(os.path.join(rpath, rname))
+                            }
     print(json.dumps(reports, sort_keys=True, indent=4))
-    if app.debug:
-        print(json.dumps(reports, sort_keys=True, indent=4))
+    #if app.debug:
+    #    print(json.dumps(reports, sort_keys=True, indent=4))
     return reports
 
 def _check_report_params(sql, from_file=True):
