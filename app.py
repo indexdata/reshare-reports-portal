@@ -5,10 +5,11 @@ import json
 import jwt
 import logging
 import os
+import pandas as pd
 import psycopg2
 from psycopg2 import Error
 import re
-import requests
+#import requests
 import settings
 import sys
 
@@ -24,6 +25,8 @@ app.config['LDP_DATABASE'] = os.getenv('LDP_DATABASE') or settings.LDP_DATABASE
 app.config['REPORTS_DIR'] = os.getenv('REPORTS_DIR') or settings.REPORTS_DIR
 app.config['ORG_NAME'] = os.getenv('ORG_NAME') or settings.ORG_NAME
 print(app.config['LDP_HOST'])
+
+CROSSTAB_LIST = ['consortial_requester.sql', 'consortial_supplier.sql']
 
 # logging
 logger = logging.getLogger()
@@ -130,6 +133,7 @@ def report(report):
 @app.route('/report/<report>/params/<query>')
 @auth_required
 def parameterize_query(report, query):
+    crosstab = False
     csv = request.args.get("csv", default=False, type=bool)
     if not bool(csv):
         csv = None
@@ -141,8 +145,15 @@ def parameterize_query(report, query):
             query_sql = open(current_report['queries'][query]['sql'], 'r').read()
         except:
             abort(404)
+        if current_report['queries'][query]['crosstab']:
+            crosstab = True
         #return "parameterize {}".format(query)
-        return render_template('parameterize.html', report=report, query=query, query_sql=query_sql, csv=csv)
+        return render_template('parameterize.html',
+                               report=report,
+                               query=query,
+                               query_sql=query_sql,
+                               csv=csv,
+                               crosstab=crosstab)
 
 @app.route('/report/<report>/execute/<query>', methods=['GET', 'POST'])
 @auth_required
@@ -155,9 +166,8 @@ def execute_query(report, query):
         if request.method == 'POST':
             start_date = request.form['start-date']
             end_date = request.form['end-date']
+            crosstab = request.form.get('crosstab')
             query_sql = _sub_dates(query_sql, start_date, end_date)
-            #report = request.form['report']
-            #query = request.form['query']
     except:
         abort(404)
     try: 
@@ -170,14 +180,34 @@ def execute_query(report, query):
         )
     except psycopg2.OperationalError:
         abort(500)
-    result = _postgres_query(connection, query_sql)
-    _postgres_close_connection(connection)
     csv = request.args.get("csv", default=False, type=bool)
+    # handle reports with crosstabs
+    if crosstab == "True":
+        df = pd.read_sql(query_sql, connection)
+        crosstab_result = pd.crosstab(df.requester, df.supplier, df.count_of_requests, aggfunc='sum', margins=True, dropna=False).fillna(0)
+        # csv crosstab
+        if bool(csv):
+            return Response(
+                _crosstab_result_to_csv(crosstab_result),
+                mimetype="text/csv",
+                headers={"Content-disposition": "attachment; filename={}.csv".format(report)})   
+        # web display crosstab
+        else:
+            return render_template('crosstab-results.html',
+                                   result=crosstab_result,
+                                   report=report,
+                                   start_date=start_date,
+                                   end_date=end_date)
+    else:
+        result = _postgres_query(connection, query_sql)
+    _postgres_close_connection(connection)
+    # csv
     if bool(csv):
         return Response(
             _result_to_csv(result),
             mimetype="text/csv",
             headers={"Content-disposition": "attachment; filename={}.csv".format(report)})
+    # web display
     else:
         return render_template('results.html', result=result, report=report, start_date=start_date, end_date=end_date)
 
@@ -229,6 +259,14 @@ def _result_to_csv(result):
         csv_result += ','.join(f'"{datum}"' for datum in record) + '\n'
     return csv_result
 
+def _crosstab_result_to_csv(crosstab_result):
+    '''Takes a pandas dataframe in crosstab form'''
+    csv_result = ' ,' + ','.join(f'"{column_name}"' for column_name in crosstab_result.columns) + '\n'
+    for index, row in crosstab_result.iterrows():
+        #csv_result += ' ,'
+        csv_result += row.name.capitalize() + ',' +','.join(f'"{datum}"' for datum in row) + '\n'
+    return csv_result
+
 def _postgres_close_connection(connection):
     try:
         return connection.close()
@@ -252,7 +290,8 @@ def _build_reports_index(rootdir):
                             reports[dir]["queries"][rname] = {
                                 "sql": os.path.join(rpath, rname),
                                 "name": rname,
-                                "has_params": _check_report_params(os.path.join(rpath, rname))
+                                "has_params": _check_report_params(os.path.join(rpath, rname)),
+                                "crosstab" : _check_report_crosstab(rname, CROSSTAB_LIST)
                             }
     print(json.dumps(reports, sort_keys=True, indent=4))
     #if app.debug:
@@ -269,6 +308,14 @@ def _check_report_params(sql, from_file=True):
     if 'WITH parameters AS' in query_sql:
         has_params = True
     return has_params
+
+def _check_report_crosstab(report_name, crosstab_list):
+    crosstab = False
+    if report_name in crosstab_list:
+        crosstab = True
+    return crosstab
+
+    
 
 def _sub_dates(query_sql, start_date, end_date):
         # sub start date
