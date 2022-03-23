@@ -12,22 +12,30 @@
     <div class="alert alert-primary" role="alert">
         Columns are {{ result.columns.name }}, rows are {{ result.index.name }}.
     </div>
-    <table class="table table-hover table-responsive">
-        <thead>
-          <tr>
-            <th scope="col"></th>
-            {% for column_name in result.columns %}
-            <th scope="col">{{ column_name }}</th>
-            {% endfor %}
-          </tr>
-        </thead>
-        <tbody>
-            {% for index, row in result.iterrows() %}
+    <div>
+      <table class="table table-hover table-responsive">
+          <thead>
             <tr>
-            <th scope="row">{{ row.name.capitalize() }}</th>
-              {% for datapoint in row %}
-              <td>{{ datapoint | string() }}</td>
+              <th scope="col"></th>
+              {% for column_name in result.columns %}
+              <th scope="col">{{ column_name }}</th>
               {% endfor %}
             </tr>
-            {% endfor %}
+          </thead>
+          <tbody>
+              {% for index, row in result.iterrows() %}
+              <tr>
+              <th scope="row">{{ row.name.capitalize() }}</th>
+                {% for datapoint in row %}
+                <td>{{ datapoint | string() }}</td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+      </table>
+    </div>
+<script>
+$(document).ready(function(){ 
+  $('.table-responsive').doubleScroll(); 
+}); 
+</script>
 {% endblock %}  

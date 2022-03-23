@@ -15,4 +15,3 @@ function setDefaultDates() {
     startDateControl.value = startDate.toISOString().split('T')[0];
     endDateControl.value = endDate.toISOString().split('T')[0];
 }
-
