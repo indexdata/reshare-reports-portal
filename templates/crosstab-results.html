@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block content %}
+    <h1>{{ report }}</h1>
+    {% if start_date and end_date %}
+    <div id="params">
+        <h3>Parameters</h3>
+        <p>Start Date: {{ start_date }}</p>
+        <p>End Date: {{ end_date }}</p>
+    </div>
+    {% endif %}
+    <div class="alert alert-primary" role="alert">
+        Columns are {{ result.columns.name }}, rows are {{ result.index.name }}.
+    </div>
+    <div>
+      <table class="table table-hover table-responsive">
+          <thead>
+            <tr>
+              <th scope="col"></th>
+              {% for column_name in result.columns %}
+              <th scope="col">{{ column_name }}</th>
+              {% endfor %}
+            </tr>
+          </thead>
+          <tbody>
+              {% for index, row in result.iterrows() %}
+              <tr>
+              <th scope="row">{{ row.name.capitalize() }}</th>
+                {% for datapoint in row %}
+                <td>{{ datapoint | string() }}</td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+      </table>
+    </div>
+<script>
+$(document).ready(function(){ 
+  $('.table-responsive').doubleScroll(); 
+}); 
+</script>
+{% endblock %}  

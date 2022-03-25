@@ -14,6 +14,14 @@
             <label for="end-date" class="col-sm-3 col-form-label">End Date</label>
             <input name="end-date" id="end-date" type="date" value="2030-01-01">
         </div>
+        {% if crosstab %}
+        <div class="form-group row">
+            <label for="crosstab" class="col-sm-3 col-form-label">Crosstab</label>
+            <input name="crosstab" id="crosstab" type="checkbox" value="True" checked>
+        </div>
+        {% else %}
+            <input name="crosstab" id="crosstab" type="hidden" value="False">
+        {% endif %}
         <div class="form-group">
             <button type="submit" class="btn btn-primary">Submit</button>
         </div>
