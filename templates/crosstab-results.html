@@ -25,7 +25,7 @@
           <tbody>
               {% for index, row in result.iterrows() %}
               <tr>
-              <th scope="row">{{ row.name.capitalize() }}</th>
+              <th scope="row">{{ titlecase(row.name) }}</th>
                 {% for datapoint in row %}
                 <td>{{ datapoint | string() }}</td>
                 {% endfor %}

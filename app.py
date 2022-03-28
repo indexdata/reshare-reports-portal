@@ -12,6 +12,7 @@ import re
 #import requests
 import settings
 import sys
+from titlecase import titlecase
 
 # define our webapp
 app = Flask(__name__)
@@ -197,7 +198,8 @@ def execute_query(report, query):
                                    result=crosstab_result,
                                    report=report,
                                    start_date=start_date,
-                                   end_date=end_date)
+                                   end_date=end_date,
+                                   titlecase=titlecase)
     else:
         result = _postgres_query(connection, query_sql)
     _postgres_close_connection(connection)
@@ -264,7 +266,7 @@ def _crosstab_result_to_csv(crosstab_result):
     csv_result = ' ,' + ','.join(f'"{column_name}"' for column_name in crosstab_result.columns) + '\n'
     for index, row in crosstab_result.iterrows():
         #csv_result += ' ,'
-        csv_result += row.name.capitalize() + ',' +','.join(f'"{datum}"' for datum in row) + '\n'
+        csv_result += titlecase(row.name) + ',' +','.join(f'"{datum}"' for datum in row) + '\n'
     return csv_result
 
 def _postgres_close_connection(connection):
@@ -280,7 +282,7 @@ def _build_reports_index(rootdir):
         for dir in subdirs:
             # skip requesting_ration DEVOPS-963
             if dir != "requesting_ratio":
-                reports[dir] = {"report":dir,"name": dir.replace('_', ' ').capitalize()}
+                reports[dir] = {"report":dir,"name": dir.replace('_', ' ')}
                 for rpath, rsubdirs, rfiles in os.walk(os.path.join(path, dir)):
                     reports[dir]["queries"] = {}
                     for rname in rfiles:
