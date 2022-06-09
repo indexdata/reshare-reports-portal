@@ -25,6 +25,7 @@ app.config['LDP_PORT'] = os.getenv('LDP_PORT') or settings.LDP_PORT
 app.config['LDP_DATABASE'] = os.getenv('LDP_DATABASE') or settings.LDP_DATABASE
 app.config['REPORTS_DIR'] = os.getenv('REPORTS_DIR') or settings.REPORTS_DIR
 app.config['ORG_NAME'] = os.getenv('ORG_NAME') or settings.ORG_NAME
+app.config['ANALYTICS_VERSION'] = os.getenv('ANALYTICS_VERSION') or settings.ANALYTICS_VERSION
 print(app.config['LDP_HOST'])
 
 CROSSTAB_LIST = ['consortial_requester.sql', 'consortial_supplier.sql']
@@ -76,7 +77,7 @@ def index():
     print("found reports: ")
     for key in all_reports:
         print(key)
-        reports_list.append({"name": all_reports[key]['name'], "report": all_reports[key]['report']})
+        reports_list.append({"name": all_reports[key]['nice_name'], "report": all_reports[key]['report']})
     # sort the list of reports
     reports = sorted(reports_list, key=lambda d: d['name'])
     return render_template("index.html", reports=reports)
@@ -282,7 +283,8 @@ def _build_reports_index(rootdir):
         for dir in subdirs:
             # skip requesting_ration DEVOPS-963
             if dir != "requesting_ratio":
-                reports[dir] = {"report":dir,"name": dir.replace('_', ' ')}
+                reports[dir] = {"report":dir,"name": dir}
+                reports[dir] = {"report":dir,"nice_name": dir.replace('_', ' ')}
                 for rpath, rsubdirs, rfiles in os.walk(os.path.join(path, dir)):
                     reports[dir]["queries"] = {}
                     for rname in rfiles:
