@@ -246,14 +246,15 @@ def _postgres_query(connection, query):
     # get a cursor
     try:
         cursor = connection.cursor()
-        cursor.execute(query)
-        result['column_names'] = [desc[0] for desc in cursor.description]
-        result['data'] = cursor.fetchall()
+        try:
+            cursor.execute(query)
+            result['column_names'] = [desc[0] for desc in cursor.description]
+            result['data'] = cursor.fetchall()
+        finally:
+            cursor.close()
     except (Exception, Error) as error:
         print(error)
         raise
-    finally:
-        cursor.close()
     return result
 
 def _result_to_csv(result):
