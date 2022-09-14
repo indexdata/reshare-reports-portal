@@ -244,8 +244,8 @@ def _postgres_connect(host, port, username, password, database):
 def _postgres_query(connection, query):
     result = {}
     # get a cursor
-    cursor = connection.cursor()
     try:
+        cursor = connection.cursor()
         cursor.execute(query)
         result['column_names'] = [desc[0] for desc in cursor.description]
         result['data'] = cursor.fetchall()
