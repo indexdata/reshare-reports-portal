@@ -26,6 +26,7 @@ app.config['LDP_DATABASE'] = os.getenv('LDP_DATABASE') or settings.LDP_DATABASE
 app.config['REPORTS_DIR'] = os.getenv('REPORTS_DIR') or settings.REPORTS_DIR
 app.config['ORG_NAME'] = os.getenv('ORG_NAME') or settings.ORG_NAME
 app.config['ANALYTICS_VERSION'] = os.getenv('ANALYTICS_VERSION') or settings.ANALYTICS_VERSION
+app.config['UNAVAILABLE_MESSAGE'] = os.getenv('UNAVAILABLE_MESSAGE') or settings.UNAVAILABLE_MESSAGE
 print(app.config['LDP_HOST'])
 
 CROSSTAB_LIST = ['consortial_requester.sql', 'consortial_supplier.sql']
@@ -77,7 +78,11 @@ def index():
     print("found reports: ")
     for key in all_reports:
         print(key)
-        reports_list.append({"name": all_reports[key]['nice_name'], "report": all_reports[key]['report']})
+        reports_list.append({
+            "name": all_reports[key]['nice_name'],
+            "report": all_reports[key]['report'],
+            "warning": all_reports[key]['warning']
+    })
     # sort the list of reports
     reports = sorted(reports_list, key=lambda d: d['name'])
     return render_template("index.html", reports=reports)
@@ -297,9 +302,16 @@ def _build_reports_index(rootdir):
                                 "has_params": _check_report_params(os.path.join(rpath, rname)),
                                 "crosstab" : _check_report_crosstab(rname, CROSSTAB_LIST)
                             }
-    print(json.dumps(reports, sort_keys=True, indent=4))
-    #if app.debug:
-    #    print(json.dumps(reports, sort_keys=True, indent=4))
+    #print(json.dumps(reports, sort_keys=True, indent=4))
+    # add unavailable text to select reports
+    # reports is a dict because I was being silly
+    for k in reports:
+        if k == 'consortial_requesting' or k == 'consortial_supplying':
+            reports[k]['warning'] = app.config['UNAVAILABLE_MESSAGE']
+        else:
+            reports[k]['warning'] = None
+    if app.debug:
+        print(json.dumps(reports, sort_keys=True, indent=4))
     return reports
 
 def _check_report_params(sql, from_file=True):

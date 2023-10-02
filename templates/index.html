@@ -4,7 +4,7 @@
     <h1>{{ config['ORG_NAME'] }} Reports</h1>
     <ul>
         {% for report in reports %}
-        <li><a href="{{ url_for('report', report=report['report']) }}">{{ report['name'] }}</a></li>
+        <li><a href="{{ url_for('report', report=report['report']) }}">{{ report['name'] }}</a>{% if report['warning'] %} -- {{report['warning']}}{% endif %}</li>
         {% endfor %}
     </ul>
 {% endblock %}  
