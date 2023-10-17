@@ -185,8 +185,10 @@ def execute_query(report, query):
             session['password'],
             app.config['LDP_DATABASE']
         )
-    except psycopg2.OperationalError:
-        abort(500)
+    except psycopg2.OperationalError as err:
+        return Response(
+            str(err),
+            mimetype="text/plain")
     csv = request.args.get("csv", default=False, type=bool)
     # handle reports with crosstabs
     if crosstab == "True":
