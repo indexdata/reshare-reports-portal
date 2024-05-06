@@ -14,4 +14,4 @@ PyJWT==1.6.4
 requests==2.25.1
 titlecase==2.3
 urllib3==1.26.5
-Werkzeug==0.15.5
+Werkzeug>=3.0.3
