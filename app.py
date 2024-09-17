@@ -239,6 +239,7 @@ def _postgres_connect(host, port, username, password, database):
                                       host=host,
                                       port=port,
                                       database=database)
+        connection.set_session(autocommit=True)
     
     
     except (Exception, Error) as error:
