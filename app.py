@@ -1,22 +1,25 @@
 from flask import Flask, abort, flash, make_response, redirect, request, render_template, Response, session, url_for
-from flaskext.markdown import Markdown
 from functools import wraps
 import json
-import jwt
 import logging
+import markdown
+from markupsafe import Markup
 import os
 import pandas as pd
 import psycopg2
 from psycopg2 import Error
 import re
-#import requests
 import settings
 import sys
 from titlecase import titlecase
 
 # define our webapp
 app = Flask(__name__)
-Markdown(app, extensions=['extra'])
+
+# markdown template filter (replaces the unmaintained Flask-Markdown)
+@app.template_filter('markdown')
+def markdown_filter(text):
+    return Markup(markdown.markdown(text, extensions=['extra']))
 
 #configuration from settings.py
 app.secret_key = os.getenv('SESSION_KEY') or settings.SESSION_KEY
@@ -27,6 +30,8 @@ app.config['REPORTS_DIR'] = os.getenv('REPORTS_DIR') or settings.REPORTS_DIR
 app.config['ORG_NAME'] = os.getenv('ORG_NAME') or settings.ORG_NAME
 app.config['ANALYTICS_VERSION'] = os.getenv('ANALYTICS_VERSION') or settings.ANALYTICS_VERSION
 app.config['UNAVAILABLE_MESSAGE'] = os.getenv('UNAVAILABLE_MESSAGE') or settings.UNAVAILABLE_MESSAGE
+# Flask 2.3+ no longer sets ENV from FLASK_ENV
+app.config['ENV'] = os.getenv('FLASK_ENV') or 'production'
 print(app.config['LDP_HOST'])
 
 CROSSTAB_LIST = ['consortial_requester.sql', 'consortial_supplier.sql']
@@ -65,10 +70,13 @@ def application_error(e):
     return render_template('500.html'), 500
 
 # set global variable for reports based on git repo
-@app.before_first_request
+all_reports = None
+
+@app.before_request
 def set_reports():
     global all_reports
-    all_reports = _build_reports_index(app.config['REPORTS_DIR'])
+    if all_reports is None:
+        all_reports = _build_reports_index(app.config['REPORTS_DIR'])
 
 # routes and controllers
 @app.route('/')
@@ -167,6 +175,7 @@ def parameterize_query(report, query):
 def execute_query(report, query):
     start_date = None
     end_date = None
+    crosstab = None
     current_report = _get_report(report, all_reports)
     try:
         query_sql = open(current_report['queries'][query]['sql'], 'r').read()
@@ -192,6 +201,12 @@ def execute_query(report, query):
     if crosstab == "True":
         df = pd.read_sql(query_sql, connection)
         crosstab_result = pd.crosstab(df.requester, df.supplier, df.count_of_requests, aggfunc='sum', margins=True, dropna=False).fillna(0)
+        # pandas 1.x left records with a null requester/supplier out of the table body (but not the margins);
+        # newer pandas keeps them with dropna=False, so filter to match
+        keyed = df.dropna(subset=['requester', 'supplier'])
+        crosstab_result = crosstab_result.loc[
+            crosstab_result.index.isin(keyed.requester) | (crosstab_result.index == 'All'),
+            crosstab_result.columns.isin(keyed.supplier) | (crosstab_result.columns == 'All')]
         # csv crosstab
         if bool(csv):
             return Response(

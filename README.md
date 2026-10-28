@@ -4,7 +4,7 @@ A simple flask app to make it easy to run prepared reports for ReShare against L
 ## Setup
 Setup python
 ```
-virtualenv -p python3.6 ENV
+python3.14 -m venv ENV
 source ENV/bin/activate
 pip install -r requirements.txt
 ```
